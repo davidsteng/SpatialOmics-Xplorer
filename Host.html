@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+    <!-- add title -->
+    
+    <!-- import required libraries here -->
+<script type="module">
+import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+
+var margin = {top: 2, right: 0, bottom: 50, left: 50}
+, width = 1100 - margin.left - margin.right // Use the window's width 
+, height = 900 - margin.top - margin.bottom; // Use the window's height
+
+// define the dimensions and margins for the bar chart
+
+// append svg element to the body of the page
+// set dimensions and position of the svg element
+const svg = d3
+    .select("body")
+    .append("svg")
+    .attr("id", "root")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+    .append("g")
+    .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")");
+
+// Fetch the data
+var pathToCsv = "./MERFISH_all_neurons_with_clusters.csv";
+
+var colors = ["#3366cc", "#dc3912", "#ff9900", "#109618", "#990099", "#0099c6", "#dd4477", 
+    "#66aa00", "#b82e2e", "#316395", "#994499", "#22aa99", "#aaaa11", "#6633cc", "#e67300",
+    "#8b0707", "#651067", "#329262", "#5574a6", "#3b3eac"]
+
+d3.dsv(",", pathToCsv, function (d) {
+    return {
+        name: d.names,
+        x: +d.center_x,
+        y: +d.center_y,
+        cluster: +d.cluster_no,
+        type: d.cell_type
+    }
+}).then(function (data) {
+    console.log(data)
+    var xMax = d3.max(data, function(d) {return +d.x;})
+    var yMax = d3.max(data, function(d) {return +d.y;})
+    var x = d3.scaleLinear()
+        .domain([0, xMax])
+        .range([ 0, width ]);
+    svg.append("g")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x));
+
+    var y = d3.scaleLinear()
+        .domain([0, yMax])
+        .range([ height, 0]);
+    svg.append("g")
+        .call(d3.axisLeft(y));
+
+    svg.append('g')
+        .selectAll("dot")
+        .data(data)
+        .enter()
+        .append("circle")
+            .attr("cx", function (d) { return x(d.x); } )
+            .attr("cy", function (d) { return y(d.y); } )
+            .attr("r", 0.2)
+            .style("fill", function (d) {return colors[d.cluster]})
+})
+
+</script>
+    <style>
+        /* define CSS rules here */
+        .d3-tip {
+		  line-height: 1;
+		  font-weight: bold;
+		  padding: 12px;
+		  background: rgba(20, 20, 20, 0.8);
+		  color: #fff;
+		  border-radius: 3px;
+          pointer-events: none
+		}
+    </style>
+
+    <title></title>
+</head>
+
+<body>
+</body>
+
+</html>
