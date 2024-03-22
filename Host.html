@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<!-- cse6242 project -->
+
+<!-- run: http-server & -->
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mouse Brain Cell Data Visualization</title>
+  <style>
+    body {
+        background-color: #000; /* Black background */
+        color: #fff; /* White text */
+        font-family: Arial, sans-serif;
+    }
+
+    #container {
+        width: 80%;
+        margin: 0 auto;
+        padding-top: 20px;
+        text-align: center;
+    }
+
+    .button {
+        background-color: #444; /* Dark gray button */
+        color: #fff; /* White text */
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-right: 10px;
+    }
+
+    .button:hover {
+        background-color: #666; /* Light gray on hover */
+    }
+
+    .icon {
+        width: 50px;
+        height: 50px;
+        margin: 10px;
+        cursor: pointer;
+    }
+
+    #scatterplot {
+        width: 100%;
+        height: 400px;
+        margin-top: 20px;
+    }
+
+    .legend {
+        text-align: right;
+    }
+
+    .legend-item {
+        cursor: pointer;
+    }
+
+    .legend-item:hover {
+        font-weight: bold;
+    }
+
+    .legend-item.disabled {
+        color: #666; /* Grayed out color */
+    }
+</style>
+</head>
+
+<body>
+
+  <script src="lib/d3/d3.min.js"></script>
+  <script src="lib/d3-dsv/d3-dsv.min.js"></script>
+  <script src="lib/d3-fetch/d3-fetch.min.js"></script>
+
+  <div id="container">
+    <h1>Mouse Brain Cell Data Visualization</h1>
+    <div>
+        <select id="clusterFilter" class="button filter">
+            <option value="">Select Cluster</option>
+            <!-- Options will be populated dynamically -->
+        </select>
+        <select id="cellTypeFilter" class="button filter">
+            <option value="">Select Cell Type</option>
+            <!-- Options will be populated dynamically -->
+        </select>
+    </div>
+    <div id="scatterplot">
+        <!-- D3.js scatter plot will be displayed here -->
+    </div>
+    <div class="legend">
+        <h3>Legends</h3>
+        <!-- Legends will be populated dynamically -->
+    </div>
+</div>
+
+  <script>
+
+    // Get the data
+    var pathToCsv = "MERFISH_all_neurons_with_clusters.csv";		// path to csv
+
+    d3.dsv(",", pathToCsv, function (d) {
+      return {
+        // format data attributes if required
+        names: d.names,
+        x: +d.center_x,
+        y: +d.center_y,
+        cluster: +d.cluster_no,
+        cellType: d.cell_type,
+      }
+    }).then(function (data) {
+      console.log(data); // you should see the data in your browser's developer tools console
+
+      function updateScatterPlot() {
+            const clusterFilter = document.getElementById("clusterFilter").value;
+            const cellTypeFilter = document.getElementById("cellTypeFilter").value;
+
+            // Filter data based on selected filters
+            let filteredData = data;
+            if (clusterFilter) {
+                filteredData = filteredData.filter(d => d.cluster === parseInt(clusterFilter));
+            }
+            if (cellTypeFilter) {
+                filteredData = filteredData.filter(d => d.cellType === cellTypeFilter);
+            }
+
+            // Sample scales for x and y axes
+            const svg = d3.select("#scatterplot").select("svg");
+            svg.selectAll("*").remove();
+
+            const xScale = d3.scaleLinear()
+                            .domain([0, d3.max(filteredData, d => d.x)])
+                            .range([0, svg.attr("width")]);
+            
+            const yScale = d3.scaleLinear()
+                            .domain([0, d3.max(filteredData, d => d.y)])
+                            .range([svg.attr("height"), 0]);
+
+            // Create circles for filtered data points
+            svg.selectAll("circle")
+                .data(filteredData)
+                .enter()
+                .append("circle")
+                .attr("cx", d => xScale(d.x))
+                .attr("cy", d => yScale(d.y))
+                .attr("r", 5)
+                .attr("fill", d => colorScale(d.cluster));
+            
+            // Update legends
+            const legendDiv = d3.select(".legend");
+            legendDiv.selectAll("*").remove();
+            const clusters = [...new Set(filteredData.map(d => d.cluster))];
+            clusters.forEach(cluster => {
+                const clusterData = filteredData.find(d => d.cluster === cluster);
+                legendDiv.append("div")
+                    .attr("class", "legend-item")
+                    .style("color", colorScale(cluster))
+                    .text(`Cluster ${cluster} - ${clusterData.cellType}`)
+                    .on("mouseover", function() {
+                        svg.selectAll("circle")
+                            .attr("fill", d => d.cluster === cluster ? colorScale(d.cluster) : "#666");
+                    })
+                    .on("mouseout", function() {
+                        svg.selectAll("circle").attr("fill", d => colorScale(d.cluster));
+                    });
+            });
+        }
+
+        // Initialize scatter plot and legends
+        const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+        const svg = d3.select("#scatterplot")
+                    .append("svg")
+                    .attr("width", "100%")
+                    .attr("height", 400);
+
+        // Populate cluster filter dropdown
+        const clusterFilterSelect = document.getElementById("clusterFilter");
+        const clusters = [...new Set(data.map(d => d.cluster))];
+        clusters.slice(0, 5).forEach(cluster => {
+            const option = document.createElement("option");
+            option.text = `Cluster ${cluster}`;
+            option.value = cluster;
+            clusterFilterSelect.appendChild(option);
+        });
+
+        // Populate cell type filter dropdown
+        const cellTypeFilterSelect = document.getElementById("cellTypeFilter");
+        const cellTypes = [...new Set(data.map(d => d.cellType))];
+        cellTypes.forEach(cellType => {
+            const option = document.createElement("option");
+            option.text = cellType;
+            option.value = cellType;
+            cellTypeFilterSelect.appendChild(option);
+        });
+
+        // Event listener for filter dropdowns
+        document.querySelectorAll(".filter").forEach(select => {
+            select.addEventListener("change", updateScatterPlot);
+        });
+
+        // Initial scatter plot with default filters
+        updateScatterPlot();
+    }).catch(function (error) {
+      console.log(error);
+    });
+
+
+  </script>
+
+</body>
+
+</html>
