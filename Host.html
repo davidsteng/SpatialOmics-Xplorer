@@ -5,207 +5,331 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mouse Brain Cell Data Visualization</title>
-  <style>
-    body {
-        background-color: #000; /* Black background */
-        color: #fff; /* White text */
-        font-family: Arial, sans-serif;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mouse Brain Cell Data Visualization</title>
+    <style>
+        body {
+            background-color: #000;
+            /* Black background */
+            color: #fff;
+            /* White text */
+            font-family: Arial, sans-serif;
+            overflow-x: hidden;
+            /* Hide horizontal scrollbar */
+            margin: 0;
+            /* Remove default margins */
+            padding: 0;
+            /* Remove default padding */
+        }
 
-    #container {
-        width: 80%;
-        margin: 0 auto;
-        padding-top: 20px;
-        text-align: center;
-    }
+        #container {
+            width: 80%;
+            margin: 0 auto;
+            padding-top: 20px;
+            text-align: center;
+            position: relative;
+            /* Relative position for absolute positioning of dropdown */
+        }
 
-    .button {
-        background-color: #444; /* Dark gray button */
-        color: #fff; /* White text */
-        padding: 10px 20px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        margin-right: 10px;
-    }
+        .button {
+            background-color: #444;
+            /* Dark gray button */
+            color: #fff;
+            /* White text */
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
 
-    .button:hover {
-        background-color: #666; /* Light gray on hover */
-    }
+        .button:hover {
+            background-color: #666;
+            /* Light gray on hover */
+        }
 
-    .icon {
-        width: 50px;
-        height: 50px;
-        margin: 10px;
-        cursor: pointer;
-    }
+        .icon {
+            width: 20px;
+            height: 15px;
+            position: absolute;
+            /* Position the icon absolutely */
+            top: 80px;
+            /* Align icon with the top of the page */
+            left: -12%;
+            /* Align icon with the left edge of the page */
+            cursor: pointer;
+            transition: left 0.5s ease;
+            /* Smooth transition */
+            z-index: 2;
+            /* Ensure icon appears above other elements */
+        }
 
-    #scatterplot {
-        width: 100%;
-        height: 400px;
-        margin-top: 20px;
-    }
+        #dropdownContainer {
+            position: absolute;
+            top: 80px;
+            left: -550px;
+            /* Initially hidden */
+            width: 200px;
+            height: 100%;
+            background-color: #222;
+            /* Dark gray background */
+            transition: left 0.5s ease;
+            /* Smooth transition */
+            z-index: 1;
+        }
 
-    .legend {
-        text-align: right;
-    }
+        #dropdownContent {
+            padding: 20px;
+            height: 100%;
+            overflow-y: auto;
+            /* Enable vertical scrolling if content exceeds height */
+        }
 
-    .legend-item {
-        cursor: pointer;
-    }
+        .dropdownItem {
+            color: #fff;
+            /* White text */
+            padding: 10px 0;
+            border-bottom: 1px solid #444;
+            /* Dark gray border */
+            cursor: pointer;
+        }
 
-    .legend-item:hover {
-        font-weight: bold;
-    }
+        .dropdownItem:hover {
+            background-color: #333;
+            /* Slightly lighter gray on hover */
+        }
 
-    .legend-item.disabled {
-        color: #666; /* Grayed out color */
-    }
-</style>
+        #scatterplot {
+            margin: 20px auto;
+            /* Center the scatter plot horizontally */
+            width: calc(98% - 200px);
+            /* Adjust width to leave space for legend */
+            position: relative;
+            z-index: 0;
+            /* Ensure scatter plot appears below other elements */
+            float: left;
+            /* Align scatter plot to the left */
+        }
+
+        .legend {
+            text-align: left;
+            /* Align legend to the left */
+            width: 180px;
+            /* Adjust width as needed */
+            position: absolute;
+            top: 150px;
+            /* Align legend with the top of the scatter plot */
+            right: 20px;
+            /* Align legend to the right */
+            transform: translateY(-20%);
+            /* Adjust position to center the legend vertically */
+            z-index: 2;
+            /* Ensure legend appears above other elements */
+        }
+
+        .legend-item {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .legend-item:hover {
+            font-weight: bold;
+        }
+
+        #plotLegendContainer {
+            position: relative;
+        }
+    </style>
 </head>
 
 <body>
 
-  <script src="lib/d3/d3.min.js"></script>
-  <script src="lib/d3-dsv/d3-dsv.min.js"></script>
-  <script src="lib/d3-fetch/d3-fetch.min.js"></script>
+    <script src="lib/d3/d3.min.js"></script>
+    <script src="lib/d3-dsv/d3-dsv.min.js"></script>
+    <script src="lib/d3-fetch/d3-fetch.min.js"></script>
 
-  <div id="container">
-    <h1>Mouse Brain Cell Data Visualization</h1>
-    <div>
-        <select id="clusterFilter" class="button filter">
-            <option value="">Select Cluster</option>
-            <!-- Options will be populated dynamically -->
-        </select>
-        <select id="cellTypeFilter" class="button filter">
-            <option value="">Select Cell Type</option>
-            <!-- Options will be populated dynamically -->
-        </select>
+    <div id="container">
+        <h1>Mouse Brain Cell Data Visualization</h1>
+        <div id="dropdownContainer">
+            <div class="dropdownContent">
+                <select id="clusterFilter" class="filter">
+                    <option value="">Select Cluster</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+                <select id="cellTypeFilter" class="filter">
+                    <option value="">Select Cell Type</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+        </div>
+        <img src="menu_icon.png" alt="Menu Icon" class="icon" id="menuIcon">
+        <div id="plotLegendContainer">
+            <div id="scatterplot">
+                <!-- Scatter plot will be inserted here -->
+            </div>
+            <div class="legend">
+                <!-- Legend will be inserted here -->
+            </div>
+        </div>
     </div>
-    <div id="scatterplot">
-        <!-- D3.js scatter plot will be displayed here -->
-    </div>
-    <div class="legend">
-        <h3>Legends</h3>
-        <!-- Legends will be populated dynamically -->
-    </div>
-</div>
 
-  <script>
+    <script>
 
-    // Get the data
-    var pathToCsv = "MERFISH_all_neurons_with_clusters.csv";		// path to csv
+        // Get the data
+        var pathToCsv = "MERFISH_all_neurons_with_clusters_cut.csv";		// path to csv
 
-    d3.dsv(",", pathToCsv, function (d) {
-      return {
-        // format data attributes if required
-        names: d.names,
-        x: +d.center_x,
-        y: +d.center_y,
-        cluster: +d.cluster_no,
-        cellType: d.cell_type,
-      }
-    }).then(function (data) {
-      console.log(data); // you should see the data in your browser's developer tools console
-
-      function updateScatterPlot() {
-            const clusterFilter = document.getElementById("clusterFilter").value;
-            const cellTypeFilter = document.getElementById("cellTypeFilter").value;
-
-            // Filter data based on selected filters
-            let filteredData = data;
-            if (clusterFilter) {
-                filteredData = filteredData.filter(d => d.cluster === parseInt(clusterFilter));
+        d3.dsv(",", pathToCsv, function (d) {
+            return {
+                // format data attributes if required
+                names: d.names,
+                x: +d.center_x,
+                y: +d.center_y,
+                cluster: +d.cluster_no,
+                cellType: d.cell_type,
             }
-            if (cellTypeFilter) {
-                filteredData = filteredData.filter(d => d.cellType === cellTypeFilter);
+        }).then(function (data) {
+            console.log(data); // you should see the data in your browser's developer tools console
+
+            function updateScatterPlot() {
+                const clusterFilter = document.getElementById("clusterFilter").value;
+                const cellTypeFilter = document.getElementById("cellTypeFilter").value;
+
+                // Filter data based on selected filters
+                let filteredData = data;
+                if (clusterFilter) {
+                    filteredData = filteredData.filter(d => d.cluster === parseInt(clusterFilter));
+                }
+                if (cellTypeFilter) {
+                    filteredData = filteredData.filter(d => d.cellType === cellTypeFilter);
+                }
+
+                // Sample scales for x and y axes
+                const svg = d3.select("#scatterplot").select("svg");
+                svg.selectAll("*").remove();
+
+                const xScale = d3.scaleLinear()
+                    .domain(d3.extent(filteredData, d => d.x))
+                    .range([0, svg.attr("width")]);
+
+                const yScale = d3.scaleLinear()
+                    .domain([0, d3.max(filteredData, d => d.y)])
+                    .range([svg.attr("height"), 0]);
+
+                // Create circles for filtered data points
+                svg.selectAll("circle")
+                    .data(filteredData)
+                    .enter()
+                    .append("circle")
+                    .attr("cx", d => xScale(d.x))
+                    .attr("cy", d => yScale(d.y))
+                    .attr("r", 5)
+                    .attr("fill", d => colorScale(d.cluster));
+
+                // Update legends
+                const legendDiv = d3.select(".legend");
+                legendDiv.selectAll("*").remove();
+                const clusters = [...new Set(filteredData.map(d => d.cluster))];
+                const legendContainer = legendDiv.append("div").attr("class", "legend-container");
+                clusters.forEach(cluster => {
+                    const clusterData = filteredData.find(d => d.cluster === cluster);
+                    const legendItem = legendContainer.append("div").attr("class", "legend-item");
+                    // Add colored square box
+                    legendItem.append("div")
+                        .style("display", "inline-block")
+                        .style("width", "10px")
+                        .style("height", "10px")
+                        .style("background-color", colorScale(cluster))
+                        .style("border", "1px solid #fff")
+                        .style("vertical-align", "middle") // Align color box vertically
+                        .style("margin-right", "5px");
+                    // Add wrapped text in rectangular white shape
+                    legendItem.append("div")
+                        .style("color", colorScale(cluster))
+                        .text(`Cluster ${cluster} - ${clusterData.cellType}`)
+                        .style("vertical-align", "middle") // Align text vertically with color box
+                        .on("mouseover", function () {
+                            svg.selectAll("circle")
+                                .attr("fill", d => d.cluster === cluster ? colorScale(d.cluster) : "#666");
+                        })
+                        .on("mouseout", function () {
+                            svg.selectAll("circle").attr("fill", d => colorScale(d.cluster));
+                        });
+                });
+                legendContainer.style("border", "2px solid #fff")
+                    .style("padding", "5px")
+                    .style("border-radius", "5px");
             }
 
-            // Sample scales for x and y axes
-            const svg = d3.select("#scatterplot").select("svg");
-            svg.selectAll("*").remove();
+            // Initialize scatter plot and legends
+            const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+            const svg = d3.select("#scatterplot")
+                .append("svg")
+                .attr("width", "100%")
+                .attr("height", 800);
 
-            const xScale = d3.scaleLinear()
-                            .domain([0, d3.max(filteredData, d => d.x)])
-                            .range([0, svg.attr("width")]);
-            
-            const yScale = d3.scaleLinear()
-                            .domain([0, d3.max(filteredData, d => d.y)])
-                            .range([svg.attr("height"), 0]);
-
-            // Create circles for filtered data points
-            svg.selectAll("circle")
-                .data(filteredData)
-                .enter()
-                .append("circle")
-                .attr("cx", d => xScale(d.x))
-                .attr("cy", d => yScale(d.y))
-                .attr("r", 5)
-                .attr("fill", d => colorScale(d.cluster));
-            
-            // Update legends
-            const legendDiv = d3.select(".legend");
-            legendDiv.selectAll("*").remove();
-            const clusters = [...new Set(filteredData.map(d => d.cluster))];
-            clusters.forEach(cluster => {
-                const clusterData = filteredData.find(d => d.cluster === cluster);
-                legendDiv.append("div")
-                    .attr("class", "legend-item")
-                    .style("color", colorScale(cluster))
-                    .text(`Cluster ${cluster} - ${clusterData.cellType}`)
-                    .on("mouseover", function() {
-                        svg.selectAll("circle")
-                            .attr("fill", d => d.cluster === cluster ? colorScale(d.cluster) : "#666");
-                    })
-                    .on("mouseout", function() {
-                        svg.selectAll("circle").attr("fill", d => colorScale(d.cluster));
-                    });
+            // Populate cluster filter dropdown
+            const clusterFilterSelect = document.getElementById("clusterFilter");
+            const clusters = [...new Set(data.map(d => d.cluster))];
+            clusters.slice(0, 5).forEach(cluster => {
+                const option = document.createElement("option");
+                option.text = `Cluster ${cluster}`;
+                option.value = cluster;
+                clusterFilterSelect.appendChild(option);
             });
-        }
 
-        // Initialize scatter plot and legends
-        const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
-        const svg = d3.select("#scatterplot")
-                    .append("svg")
-                    .attr("width", "100%")
-                    .attr("height", 400);
+            // Populate cell type filter dropdown
+            const cellTypeFilterSelect = document.getElementById("cellTypeFilter");
+            const cellTypes = [...new Set(data.map(d => d.cellType))];
+            cellTypes.forEach(cellType => {
+                const option = document.createElement("option");
+                option.text = cellType;
+                option.value = cellType;
+                cellTypeFilterSelect.appendChild(option);
+            });
 
-        // Populate cluster filter dropdown
-        const clusterFilterSelect = document.getElementById("clusterFilter");
-        const clusters = [...new Set(data.map(d => d.cluster))];
-        clusters.slice(0, 5).forEach(cluster => {
-            const option = document.createElement("option");
-            option.text = `Cluster ${cluster}`;
-            option.value = cluster;
-            clusterFilterSelect.appendChild(option);
+            // Populate dropdown list
+            const dropdownContainer = document.getElementById("dropdownContainer");
+            const menuIcon = document.getElementById("menuIcon");
+            const boundaryLeft = parseInt(window.getComputedStyle(dropdownContainer).left);
+            const boundaryLeft_icon = parseInt(window.getComputedStyle(menuIcon).left);
+
+            // Function to toggle dropdown visibility and position
+            function toggleDropdown() {
+                const currentLeft = parseInt(window.getComputedStyle(dropdownContainer).left);
+                const currentLeft_icon = parseInt(window.getComputedStyle(menuIcon).left);
+                const targetLeft = currentLeft === boundaryLeft ? (boundaryLeft + 500) : boundaryLeft; // Toggle between -100 and -500px
+                const targetLeft_icon = currentLeft_icon === boundaryLeft_icon ? (boundaryLeft_icon + 500) : boundaryLeft_icon; // Toggle between -100 and -500px
+                dropdownContainer.style.left = targetLeft + "px";
+                menuIcon.style.left = targetLeft_icon + "px";
+
+                if (targetLeft === boundaryLeft) {
+                    // Move dropdown to the middle of the page
+                    dropdownContainer.style.top = "80px";
+                    menuIcon.style.left = "15%";
+                } else {
+                    // Move dropdown back to the left
+                    dropdownContainer.style.top = "80px";
+                    menuIcon.style.left = "-12%";
+                }
+            }
+
+            // Event listener for menu icon click
+            menuIcon.addEventListener("click", toggleDropdown);
+
+            // Event listener for filter dropdowns
+            document.querySelectorAll(".filter").forEach(select => {
+                select.addEventListener("change", updateScatterPlot);
+            });
+
+            // Initial scatter plot with default filters
+            updateScatterPlot();
+        }).catch(function (error) {
+            console.log(error);
         });
 
-        // Populate cell type filter dropdown
-        const cellTypeFilterSelect = document.getElementById("cellTypeFilter");
-        const cellTypes = [...new Set(data.map(d => d.cellType))];
-        cellTypes.forEach(cellType => {
-            const option = document.createElement("option");
-            option.text = cellType;
-            option.value = cellType;
-            cellTypeFilterSelect.appendChild(option);
-        });
 
-        // Event listener for filter dropdowns
-        document.querySelectorAll(".filter").forEach(select => {
-            select.addEventListener("change", updateScatterPlot);
-        });
-
-        // Initial scatter plot with default filters
-        updateScatterPlot();
-    }).catch(function (error) {
-      console.log(error);
-    });
-
-
-  </script>
+    </script>
 
 </body>
 
