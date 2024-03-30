@@ -1,6 +1,6 @@
 # SpatialOmics-Xplorer
 
-1. to test the test code for visualization, make sure to have the test data set and d3 lib (from HW) available in the same folder
+1. To test the test code for visualization, make sure to have the test data set available in the same folder
 
 2. The filter and pulldown list have been finished, and its location and animation need to be slightly adjusted. The legend should be able to control the display of the corresponding plot line.
 
