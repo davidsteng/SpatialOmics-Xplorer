@@ -1,0 +1,22 @@
+{
+  "name": "spatialomics-xplorer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidsteng/SpatialOmics-Xplorer.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/davidsteng/SpatialOmics-Xplorer/issues"
+  },
+  "homepage": "https://github.com/davidsteng/SpatialOmics-Xplorer#readme",
+  "devDependencies": {
+    "dc": "^4.2.7"
+  }
+}
