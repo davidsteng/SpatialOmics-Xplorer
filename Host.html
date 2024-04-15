@@ -197,27 +197,36 @@
   // Get the data
   //var pathToCsv = "MERFISH_all_neurons_with_clusters_cut.csv";		// path to csv
   var pathToCsv = "MERFISH_all_neurons_with_clusters.csv";		// path to full csv
+  var neighborhood = 'analysis_results/cell_neighborhood.csv';
 
-  d3.dsv(",", pathToCsv, function (d) {
-    return {
-      // format data attributes if required
-      names: d.names,
-      x: +d.center_x,
-      y: +d.center_y,
-      cluster: +d.cluster_no,
-      cellType: d.cell_type,
-    }
-  }).then(function (data) {
-    shuffle(data)
-    data = data.slice(0, 50000)
-    console.log(data); // you should see the data in your browser's developer tools console
+  Promise.all([
+    d3.dsv(",", pathToCsv, function (d) {
+      return {
+       // format data attributes if required
+       names: d.names,
+       x: +d.center_x,
+       y: +d.center_y,
+       cluster: +d.cluster_no,
+       cellType: d.cell_type,
+    }}),
+    d3.dsv(',', neighborhood, function(d) {
+      return d;
+    })
+  ])
+  .then(function (data) {
+    tmp = data[0]
+    shuffle(tmp)
+    //Elements sliced
+    tmp = tmp.slice(0, 25000)
+    console.log(data[0]);
+    console.log(data[1]); // you should see the data in your browser's developer tools console
 
     function updateScatterPlot() {
       const clusterFilter = document.getElementById("clusterFilter").value;
       const cellTypeFilter = document.getElementById("cellTypeFilter").value;
 
       // Filter data based on selected filters
-      let filteredData = data;
+      let filteredData = tmp;
       if (clusterFilter) {
         filteredData = filteredData.filter(d => d.cluster === parseInt(clusterFilter));
       }
@@ -271,10 +280,12 @@
           .style("vertical-align", "middle") // Align text vertically with color box
           .on("mouseover", function () {
             svg.selectAll("circle")
-              .attr("fill", d => d.cluster === cluster ? colorScale(d.cluster) : "#666");
+              //.attr("fill", d => d.cluster === cluster ? colorScale(d.cluster) : "#666")
+              .attr("opacity", d => d.cluster === cluster ? 1 : 0.1);
           })
           .on("mouseout", function () {
-            svg.selectAll("circle").attr("fill", d => colorScale(d.cluster));
+            svg.selectAll("circle")//.attr("fill", d => colorScale(d.cluster))
+            .attr("opacity", 1);
           });
       });
       legendContainer.style("border", "2px solid #fff")
@@ -291,8 +302,9 @@
 
     // Populate cluster filter dropdown
     const clusterFilterSelect = document.getElementById("clusterFilter");
-    const clusters = [...new Set(data.map(d => d.cluster))];
-    clusters.slice(0, 5).forEach(cluster => {
+    const clusters = [...new Set(tmp.map(d => d.cluster))];
+    console.log(clusters)
+    clusters.forEach(cluster => {
       const option = document.createElement("option");
       option.text = `Cluster ${cluster}`;
       option.value = cluster;
@@ -301,7 +313,7 @@
 
     // Populate cell type filter dropdown
     const cellTypeFilterSelect = document.getElementById("cellTypeFilter");
-    const cellTypes = [...new Set(data.map(d => d.cellType))];
+    const cellTypes = [...new Set(tmp.map(d => d.cellType))];
     cellTypes.forEach(cellType => {
       const option = document.createElement("option");
       option.text = cellType;
@@ -319,15 +331,15 @@
     function toggleDropdown() {
       const currentLeft = parseInt(window.getComputedStyle(dropdownContainer).left);
       const currentLeft_icon = parseInt(window.getComputedStyle(menuIcon).left);
-      const targetLeft = currentLeft === boundaryLeft ? (boundaryLeft + 500) : boundaryLeft; // Toggle between -100 and -500px
-      const targetLeft_icon = currentLeft_icon === boundaryLeft_icon ? (boundaryLeft_icon + 500) : boundaryLeft_icon; // Toggle between -100 and -500px
+      const targetLeft = currentLeft === boundaryLeft ? (boundaryLeft + 410) : boundaryLeft; // Toggle between -100 and -500px
+      const targetLeft_icon = currentLeft_icon === boundaryLeft_icon ? (boundaryLeft_icon + 410) : boundaryLeft_icon; // Toggle between -100 and -500px
       dropdownContainer.style.left = targetLeft + "px";
       menuIcon.style.left = targetLeft_icon + "px";
 
       if (targetLeft === boundaryLeft) {
         // Move dropdown to the middle of the page
         dropdownContainer.style.top = "80px";
-        menuIcon.style.left = "15%";
+        menuIcon.style.left = "-12%";
       } else {
         // Move dropdown back to the left
         dropdownContainer.style.top = "80px";
