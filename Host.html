@@ -10,6 +10,55 @@
   <title>Mouse Brain Cell Data Visualization</title>
   <link rel="icon" href="web_icon.png" type="image/png"> <!-- Specify the path to your PNG icon file -->
   <style>
+    .d3-tip {
+      line-height: 1;
+      padding: 6px;
+      background: rgba(240, 240, 240, 0.95);
+      color: #333;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* Creates a small triangle extender for the tooltip */
+    .d3-tip:after {
+      box-sizing: border-box;
+      display: inline;
+      font-size: 10px;
+      width: 100%;
+      line-height: 1;
+      color: rgba(240, 240, 240, 0.95);
+      content: "\25BC";
+      position: absolute;
+      text-align: center;
+    }
+
+    /* Style northward tooltips specifically */
+    .d3-tip.n:after {
+      margin: -2px 0 0 0;
+      top: 100%;
+      left: 0;
+    }
+
+    .d3-tip h5{
+      font-size: 13px;
+      font-weight: 600;
+      margin: 2px 10px 4px 2px;
+    }
+
+    .d3-tip thead td {
+      border-bottom: 1px solid #ccc;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .d3-tip td {
+      padding: 2px 10px 2px 2px;
+    }
+
+    .d3-tip thead tr {
+      paddin-top: 10px;
+    }
+
     body {
       background-color: #000;
       /* Black background */
@@ -104,9 +153,10 @@
     #scatterplot {
       margin: 20px auto;
       /* Center the scatter plot horizontally */
-      width: calc(98% - 200px);
+      width: calc(98% - 220px);
       /* Adjust width to leave space for legend */
       position: relative;
+      top: 30px;
       z-index: 0;
       /* Ensure scatter plot appears below other elements */
       float: left;
@@ -116,12 +166,12 @@
     .legend {
       text-align: left;
       /* Align legend to the left */
-      width: 180px;
+      width: 220px;
       /* Adjust width as needed */
       position: absolute;
       top: 150px;
       /* Align legend with the top of the scatter plot */
-      right: 20px;
+      right: -20px;
       /* Align legend to the right */
       transform: translateY(-20%);
       /* Adjust position to center the legend vertically */
@@ -149,6 +199,7 @@
   <script src="lib/d3/d3.min.js"></script>
   <script src="lib/d3-dsv/d3-dsv.min.js"></script>
   <script src="lib/d3-fetch/d3-fetch.min.js"></script>
+  <script src="lib/d3-tip/d3-tip.js"></script>
 
   <div id="container">
     <h1>Mouse Brain Cell Data Visualization</h1>
@@ -195,9 +246,22 @@
   const sampleSize = ([...arr], n = 1) => shuffle(arr).slice(0, n);
 
   // Get the data
-  //var pathToCsv = "MERFISH_all_neurons_with_clusters_cut.csv";		// path to csv
-  var pathToCsv = "MERFISH_all_neurons_with_clusters.csv";		// path to full csv
+  var pathToCsv = "MERFISH_all_neurons_with_clusters_cut.csv";		// path to csv
+  // var pathToCsv = "MERFISH_all_neurons_with_clusters.csv";		// path to full csv
   var neighborhood = 'analysis_results/cell_neighborhood.csv';
+  var brushing = false;
+  var toolTip = d3.tip()
+          .attr("class", "d3-tip")
+          .offset([-12, 0])
+          .html(function(d) {
+            console.log(d);
+            // Inject html, when creating your html I recommend editing the html within your index.html first
+            return "<h5>" + d.names.replace(/-/, "-<br>")+"</h5>" +
+                    "<table><thead><tr><td>center_x</td><td>center_y</td></tr></thead>"
+                    + "<tbody><tr><td>"+d.x.toFixed(5)+"</td><td>"+d.y.toFixed(5)+"</td></tr></tbody>"
+                    + "<thead><tr><td>cluster_no</td><td>cell_type</td></tr></thead>"
+                    + "<tbody><tr><td>"+d['cluster']+"</td><td>"+d['cellType']+"</td></tr></tbody></table>"
+          });
 
   Promise.all([
     d3.dsv(",", pathToCsv, function (d) {
@@ -218,8 +282,8 @@
     shuffle(tmp)
     //Elements sliced
     tmp = tmp.slice(0, 50000)
-    console.log(data[0]);
-    console.log(data[1]); // you should see the data in your browser's developer tools console
+    // console.log(data[0]);
+    // console.log(data[1]); // you should see the data in your browser's developer tools console
 
     function updateScatterPlot() {
       const clusterFilter = document.getElementById("clusterFilter").value;
@@ -240,21 +304,36 @@
 
       const xScale = d3.scaleLinear()
         .domain(d3.extent(filteredData, d => d.x))
-        .range([0, svg.attr("width")]);
+        .range([20, svg.attr("width")-20]);
 
       const yScale = d3.scaleLinear()
         .domain([0, d3.max(filteredData, d => d.y)])
-        .range([svg.attr("height"), 0]);
+        .range([svg.attr("height")-20, 20]);
+      const brushElement = svg.append("g");
 
       // Create circles for filtered data points
-      svg.selectAll("circle")
-        .data(filteredData)
-        .enter()
+      var dots = svg.selectAll("circle").data(filteredData);
+      var dotsEnter = dots.enter()
         .append("circle")
-        .attr("cx", d => xScale(d.x))
-        .attr("cy", d => yScale(d.y))
+        .attr("id", "data_point")
         .attr("r", 2.5)
-        .attr("fill", d => colorScale(d.cluster));
+        .attr("fill", d => colorScale(d.cluster))
+        .on('mouseover', function(d) {
+          if (!brushing) {
+            d3.select(this).attr("opacity", 0.5);
+            toolTip.show(d, this);
+          }
+        })
+        .on('mouseout',  function(d) {
+          if (!brushing) {
+            d3.select(this).attr("opacity", 1);
+            toolTip.hide(d, this);
+          }
+        });
+      dots.merge(dotsEnter)
+              .attr("cx", d => xScale(d.x))
+              .attr("cy", d => yScale(d.y));
+      dots.exit().remove();
 
       // Update legends
       const legendDiv = d3.select(".legend");
@@ -263,7 +342,11 @@
       const legendContainer = legendDiv.append("div").attr("class", "legend-container");
       clusters.forEach(cluster => {
         const clusterData = filteredData.find(d => d.cluster === cluster);
-        const legendItem = legendContainer.append("div").attr("class", "legend-item");
+        const legendItem =
+                legendContainer
+                        .append("div")
+                        .attr("class", "legend-item")
+                        .attr("id", cluster);
         // Add colored square box
         legendItem.append("div")
           .style("display", "inline-block")
@@ -291,19 +374,65 @@
       legendContainer.style("border", "2px solid #fff")
         .style("padding", "5px")
         .style("border-radius", "5px");
+
+      // Brush and linking
+      const scatterplotWidth = +document.getElementById('scatterplot').clientWidth;
+      d3.select("#scatterplot").append("svg").attr("width", scatterplotWidth).attr("height", 800);
+      const brush = d3.brush()
+              .extent([[0, 0], [+scatterplotWidth, +svg.attr("height")]])
+              .on("start", brushStart)
+              .on("brush", brushed)
+              .on("end", brushEnd);
+      brushElement.call(brush);
+      // Brush 01: Start
+      function brushStart() {
+        brushing = true;
+        svg.selectAll("circle").attr("opacity", 0.1);
+        d3.selectAll(".legend-item").style("opacity", 0.1);
+      }
+      function brushed() {
+        const selection = d3.event.selection;
+        if (!selection) return;
+        const [[x0, y0], [x1, y1]] = selection;
+        const selectedClusters = new Set();
+        // Only the selected point and the corresponding legend-item have their opacity set to 1.
+        svg.selectAll("circle")
+           .attr("opacity", 0.1)  // First set the transparency of all points to 0.1
+           .filter(function(d) {
+             const isSelected = x0 <= xScale(d.x) && xScale(d.x) <= x1 && y0 <= yScale(d.y) && yScale(d.y) <= y1;
+             if (isSelected) {
+               selectedClusters.add(d.cluster);
+             }
+             return isSelected;
+          }).attr("opacity", 1);
+
+        // update opacity of legend-items
+        d3.selectAll(".legend-item")
+          .style("opacity", function() {
+            const cluster = parseInt(this.id.split('-').pop());
+            return selectedClusters.has(cluster) ? 1 : 0.2;
+          });
+      }
+      function brushEnd() {
+        brushing = false;
+        svg.selectAll("circle").attr("opacity", 1);
+        d3.selectAll(".legend-item").style("opacity", 1);
+      }
+
     }
 
     // Initialize scatter plot and legends
     const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+    const scatterplotWidth = document.getElementById('scatterplot').clientWidth;
     const svg = d3.select("#scatterplot")
       .append("svg")
-      .attr("width", "100%")
+      .attr("width", scatterplotWidth)
       .attr("height", 800);
+    svg.call(toolTip);
 
     // Populate cluster filter dropdown
     const clusterFilterSelect = document.getElementById("clusterFilter");
     const clusters = [...new Set(tmp.map(d => d.cluster))];
-    console.log(clusters)
     clusters.forEach(cluster => {
       const option = document.createElement("option");
       option.text = `Cluster ${cluster}`;
