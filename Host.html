@@ -593,6 +593,7 @@
             const cluster = checkbox.value;
             const legendItem = document.getElementById(`legendItem-${cluster}`);
             legendItem.style.fontWeight = 'bold';
+            legendItem.style.color = colorScale(cluster);
             selectedClusters.add(parseInt(cluster));
           });
           // Update scatter plot based on all clusters being checked
@@ -608,6 +609,7 @@
             const cluster = checkbox.value;
             const legendItem = document.getElementById(`legendItem-${cluster}`);
             legendItem.style.fontWeight = 'normal';
+            legendItem.style.color = 'white';
             selectedClusters.delete(parseInt(cluster));
           });
           // Update scatter plot with no clusters being selected
@@ -623,6 +625,7 @@
             const cellType = checkbox.value;
             const listItem = document.getElementById(`cellTypeItem-${cellType}`);
             listItem.style.fontWeight = 'bold';
+            listItem.style.color = colorScale(cellType);
             selectedCellTypes.add(parseInt(cellType));
           });
           // Update scatter plot based on all clusters being checked
@@ -638,6 +641,7 @@
             const cellType = checkbox.value;
             const listItem = document.getElementById(`cellTypeItem-${cellType}`);
             listItem.style.fontWeight = 'normal';
+            listItem.style.color = 'white';
             selectedCellTypes.delete(parseInt(cellType));
           });
           // Update scatter plot with no clusters being selected
