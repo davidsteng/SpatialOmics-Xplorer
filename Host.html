@@ -850,8 +850,18 @@
           });
         });
 
-        // Add event listener for uncheck all button
-        window.addEventListener('load', function () {
+        // Add event listener for check/uncheck all button
+        if (document.readyState !== 'loading') {
+          console.log('document is already ready');
+          loadcheckbuttons();
+        } else {
+          document.addEventListener('DOMContentLoaded', function () {
+            console.log('document was not ready, wait');
+            loadcheckbuttons();
+          });
+        }
+
+        function loadcheckbuttons() {
           const checkAllButton_cluster = document.getElementById('check-button-cluster');
           const uncheckAllButton_cluster = document.getElementById('uncheck-button-cluster');
           const checkAllButton_cell = document.getElementById('check-button-cell');
@@ -861,7 +871,7 @@
           uncheckAllButton_cluster.addEventListener('click', uncheckAll_cluster);
           checkAllButton_cell.addEventListener('click', checkAll_cell);
           uncheckAllButton_cell.addEventListener('click', uncheckAll_cell);
-        });
+        };
 
         // Add event listener to radio buttons
         document.getElementById('reducedDataRadio').addEventListener('change', function() {
