@@ -39,7 +39,7 @@
       left: 0;
     }
 
-    .d3-tip h5{
+    .d3-tip h5 {
       font-size: 13px;
       font-weight: 600;
       margin: 2px 10px 4px 2px;
@@ -121,7 +121,7 @@
       left: -550px;
       /* Initially hidden */
       width: 200px;
-      height: 100%;
+      height: 950px;
       background-color: #222;
       /* Dark gray background */
       transition: left 0.5s ease;
@@ -148,6 +148,23 @@
     .dropdownItem:hover {
       background-color: #333;
       /* Slightly lighter gray on hover */
+    }
+
+    .foldableList {
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .folded {
+      display: none;
+    }
+
+    .listHeader {
+      cursor: pointer;
+    }
+
+    .cluster-checkbox {
+      margin-right: 5px;
     }
 
     #scatterplot {
@@ -191,33 +208,115 @@
     #plotLegendContainer {
       position: relative;
     }
+
+    .loader {
+      border: 16px solid #f3f3f3;
+      /* Light grey */
+      border-top: 16px solid #7c7e80;
+      /* Blue */
+      border-radius: 50%;
+      width: 120px;
+      height: 120px;
+      animation: spin 2s linear infinite;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    #buttonContainer {
+      display: inline-block;
+    }
+
+    .check-button,
+    .uncheck-button {
+      display: inline-block;
+      padding: 4px 8px;
+      margin: 2px;
+      background-color: #000000;
+      /* Green */
+      border: none;
+      border-radius: 2px;
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    /* Hover effect */
+    .check-button:hover,
+    .uncheck-button:hover {
+      background-color: #45a049;
+    }
+
+    /* Pressed effect */
+    .check-button:active,
+    .uncheck-button:active {
+      background-color: #3e8e41;
+    }
+
+    .legend-container-x {
+      display: flex; /* Ensure items are displayed in a row */
+      align-items: center; /* Center items vertically */
+      margin-bottom: 5px; /* Add some margin between items */
+    }
+
+    .bar {
+      position: relative;
+      height: 8px; /* Adjust height as needed */
+      width: 100%;
+      border: 1px solid white;
+      display: flex;
+      align-items: center; /* Center the bars vertically */
+    }
+
   </style>
 </head>
 
 <body>
 
-  <script src="lib/d3/d3.min.js"></script>
-  <script src="lib/d3-dsv/d3-dsv.min.js"></script>
-  <script src="lib/d3-fetch/d3-fetch.min.js"></script>
+  <script src="lib/d3/d3.js"></script>
+  <script src="lib/d3-dsv/d3-dsv.js"></script>
+  <script src="lib/d3-fetch/d3-fetch.js"></script>
   <script src="lib/d3-tip/d3-tip.js"></script>
 
   <div id="container">
     <h1>Mouse Brain Cell Data Visualization</h1>
     <div id="dropdownContainer">
       <div class="dropdownContent">
-        <select id="clusterFilter" class="filter">
-          <option value="">Select Cluster</option>
-          <!-- Options will be populated dynamically -->
-        </select>
-        <select id="cellTypeFilter" class="filter">
-          <option value="">Select Cell Type</option>
-          <!-- Options will be populated dynamically -->
-        </select>
+        <div class="listHeader" id="clusterToggle" style="border: 1px solid white;">>>> Clusters <<<</div>
+        <div id="clusterList" class="foldableList">
+          <div id="buttonContainer">
+            <div id="check-button-cluster" class="check-button">Check All</div>
+            <div id="uncheck-button-cluster" class="uncheck-button">Uncheck All</div>
+          </div>
+          <!-- Cluster list items will be populated dynamically -->
+        </div>
+        <div class="listHeader" id="cellTypeToggle" style="border: 1px solid white;">>>> Cell Type <<<</div>
+        <div id="cellTypeList" class="foldableList">
+          <div id="buttonContainer">
+            <div id="check-button-cell" class="check-button">Check All</div>
+            <div id="uncheck-button-cell" class="uncheck-button">Uncheck All</div>
+          </div>
+          <!-- Cell type list items will be populated dynamically -->
+        </div>
       </div>
     </div>
     <img src="menu_icon.png" alt="Menu Icon" class="icon" id="menuIcon">
     <div id="plotLegendContainer">
       <div id="scatterplot">
+        <div class="loader"></div> <!-- Loader -->
         <!-- Scatter plot will be inserted here -->
       </div>
       <div class="legend">
@@ -227,271 +326,505 @@
   </div>
 
   <script>
-  //Shuffler
-  function shuffle(array) {
-    let currentIndex = array.length;
+    //Shuffler
+    function shuffle(array) {
+      let currentIndex = array.length;
 
-    // While there remain elements to shuffle...
-    while (currentIndex != 0) {
+      // While there remain elements to shuffle...
+      while (currentIndex != 0) {
 
-      // Pick a remaining element...
-      let randomIndex = Math.floor(Math.random() * currentIndex);
-      currentIndex--;
+        // Pick a remaining element...
+        let randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
 
-      // And swap it with the current element.
-      [array[currentIndex], array[randomIndex]] = [
-        array[randomIndex], array[currentIndex]];
+        // And swap it with the current element.
+        [array[currentIndex], array[randomIndex]] = [
+          array[randomIndex], array[currentIndex]];
+      }
     }
-  }
-  const sampleSize = ([...arr], n = 1) => shuffle(arr).slice(0, n);
+    const sampleSize = ([...arr], n = 1) => shuffle(arr).slice(0, n);
 
-  // Get the data
-  var pathToCsv = "MERFISH_all_neurons_with_clusters_cut.csv";		// path to csv
-  // var pathToCsv = "MERFISH_all_neurons_with_clusters.csv";		// path to full csv
-  var neighborhood = 'analysis_results/cell_neighborhood.csv';
-  var brushing = false;
-  var toolTip = d3.tip()
-          .attr("class", "d3-tip")
-          .offset([-12, 0])
-          .html(function(d) {
-            console.log(d);
-            // Inject html, when creating your html I recommend editing the html within your index.html first
-            return "<h5>" + d.names.replace(/-/, "-<br>")+"</h5>" +
-                    "<table><thead><tr><td>center_x</td><td>center_y</td></tr></thead>"
-                    + "<tbody><tr><td>"+d.x.toFixed(5)+"</td><td>"+d.y.toFixed(5)+"</td></tr></tbody>"
-                    + "<thead><tr><td>cluster_no</td><td>cell_type</td></tr></thead>"
-                    + "<tbody><tr><td>"+d['cluster']+"</td><td>"+d['cellType']+"</td></tr></tbody></table>"
-          });
-
-  Promise.all([
-    d3.dsv(",", pathToCsv, function (d) {
-      return {
-       // format data attributes if required
-       names: d.names,
-       x: +d.center_x,
-       y: +d.center_y,
-       cluster: +d.cluster_no,
-       cellType: d.cell_type,
-    }}),
-    d3.dsv(',', neighborhood, function(d) {
-      return d;
-    })
-  ])
-  .then(function (data) {
-    tmp = data[0]
-    shuffle(tmp)
-    //Elements sliced
-    tmp = tmp.slice(0, 50000)
-    // console.log(data[0]);
-    // console.log(data[1]); // you should see the data in your browser's developer tools console
-
-    function updateScatterPlot() {
-      const clusterFilter = document.getElementById("clusterFilter").value;
-      const cellTypeFilter = document.getElementById("cellTypeFilter").value;
-
-      // Filter data based on selected filters
-      let filteredData = tmp;
-      if (clusterFilter) {
-        filteredData = filteredData.filter(d => d.cluster === parseInt(clusterFilter));
-      }
-      if (cellTypeFilter) {
-        filteredData = filteredData.filter(d => d.cellType === cellTypeFilter);
-      }
-
-      // Sample scales for x and y axes
-      const svg = d3.select("#scatterplot").select("svg");
-      svg.selectAll("*").remove();
-
-      const xScale = d3.scaleLinear()
-        .domain(d3.extent(filteredData, d => d.x))
-        .range([20, svg.attr("width")-20]);
-
-      const yScale = d3.scaleLinear()
-        .domain([0, d3.max(filteredData, d => d.y)])
-        .range([svg.attr("height")-20, 20]);
-      const brushElement = svg.append("g");
-
-      // Create circles for filtered data points
-      var dots = svg.selectAll("circle").data(filteredData);
-      var dotsEnter = dots.enter()
-        .append("circle")
-        .attr("id", "data_point")
-        .attr("r", 2.5)
-        .attr("fill", d => colorScale(d.cluster))
-        .on('mouseover', function(d) {
-          if (!brushing) {
-            d3.select(this).attr("opacity", 0.5);
-            toolTip.show(d, this);
-          }
-        })
-        .on('mouseout',  function(d) {
-          if (!brushing) {
-            d3.select(this).attr("opacity", 1);
-            toolTip.hide(d, this);
-          }
-        });
-      dots.merge(dotsEnter)
-              .attr("cx", d => xScale(d.x))
-              .attr("cy", d => yScale(d.y));
-      dots.exit().remove();
-
-      // Update legends
-      const legendDiv = d3.select(".legend");
-      legendDiv.selectAll("*").remove();
-      const clusters = [...new Set(filteredData.map(d => d.cluster))];
-      const legendContainer = legendDiv.append("div").attr("class", "legend-container");
-      clusters.forEach(cluster => {
-        const clusterData = filteredData.find(d => d.cluster === cluster);
-        const legendItem =
-                legendContainer
-                        .append("div")
-                        .attr("class", "legend-item")
-                        .attr("id", cluster);
-        // Add colored square box
-        legendItem.append("div")
-          .style("display", "inline-block")
-          .style("width", "10px")
-          .style("height", "10px")
-          .style("background-color", colorScale(cluster))
-          .style("border", "1px solid #fff")
-          .style("vertical-align", "middle") // Align color box vertically
-          .style("margin-right", "5px");
-        // Add wrapped text in rectangular white shape
-        legendItem.append("div")
-          .style("color", colorScale(cluster))
-          .text(`Cluster ${cluster} - ${clusterData.cellType}`)
-          .style("vertical-align", "middle") // Align text vertically with color box
-          .on("mouseover", function () {
-            svg.selectAll("circle")
-              //.attr("fill", d => d.cluster === cluster ? colorScale(d.cluster) : "#666")
-              .attr("opacity", d => d.cluster === cluster ? 1 : 0.1);
-          })
-          .on("mouseout", function () {
-            svg.selectAll("circle")//.attr("fill", d => colorScale(d.cluster))
-            .attr("opacity", 1);
-          });
+    // Get the data
+    var pathToCsv = "MERFISH_all_neurons_with_clusters_cut.csv";		// path to csv
+    // var pathToCsv = "MERFISH_all_neurons_with_clusters.csv";		// path to full csv
+    var neighborhood = 'analysis_results/cell_neighborhood.csv';
+    var brushing = false;
+    var toolTip = d3.tip()
+      .attr("class", "d3-tip")
+      .offset([-12, 0])
+      .html(function (d) {
+        console.log(d);
+        // Inject html, when creating your html I recommend editing the html within your index.html first
+        return "<h5>" + d.names.replace(/-/, "-<br>") + "</h5>" +
+          "<table><thead><tr><td>center_x</td><td>center_y</td></tr></thead>"
+          + "<tbody><tr><td>" + d.x.toFixed(5) + "</td><td>" + d.y.toFixed(5) + "</td></tr></tbody>"
+          + "<thead><tr><td>cluster_no</td><td>cell_type</td></tr></thead>"
+          + "<tbody><tr><td>" + d['cluster'] + "</td><td>" + d['cellType'] + "</td></tr></tbody></table>"
       });
-      legendContainer.style("border", "2px solid #fff")
-        .style("padding", "5px")
-        .style("border-radius", "5px");
 
-      // Brush and linking
-      const scatterplotWidth = +document.getElementById('scatterplot').clientWidth;
-      d3.select("#scatterplot").append("svg").attr("width", scatterplotWidth).attr("height", 800);
-      const brush = d3.brush()
-              .extent([[0, 0], [+scatterplotWidth, +svg.attr("height")]])
-              .on("start", brushStart)
-              .on("brush", brushed)
-              .on("end", brushEnd);
-      brushElement.call(brush);
-      // Brush 01: Start
-      function brushStart() {
-        brushing = true;
-        svg.selectAll("circle").attr("opacity", 0.1);
-        d3.selectAll(".legend-item").style("opacity", 0.1);
-      }
-      function brushed() {
-        const selection = d3.event.selection;
-        if (!selection) return;
-        const [[x0, y0], [x1, y1]] = selection;
-        const selectedClusters = new Set();
-        // Only the selected point and the corresponding legend-item have their opacity set to 1.
-        svg.selectAll("circle")
-           .attr("opacity", 0.1)  // First set the transparency of all points to 0.1
-           .filter(function(d) {
-             const isSelected = x0 <= xScale(d.x) && xScale(d.x) <= x1 && y0 <= yScale(d.y) && yScale(d.y) <= y1;
-             if (isSelected) {
-               selectedClusters.add(d.cluster);
-             }
-             return isSelected;
-          }).attr("opacity", 1);
+    Promise.all([
+      d3.dsv(",", pathToCsv, function (d) {
+        return {
+          // format data attributes if required
+          names: d.names,
+          x: +d.center_x,
+          y: +d.center_y,
+          cluster: +d.cluster_no,
+          cellType: d.cell_type,
+        }
+      }),
+      d3.dsv(',', neighborhood, function (d) {
+        return d;
+      })
+    ])
+      .then(function (data) {
+        tmp = data[0]
+        shuffle(tmp)
+        //Elements sliced
+        tmp = tmp.slice(0, 50000)
+        // console.log(data[0]);
+        // console.log(data[1]); // you should see the data in your browser's developer tools console
 
-        // update opacity of legend-items
-        d3.selectAll(".legend-item")
-          .style("opacity", function() {
-            const cluster = parseInt(this.id.split('-').pop());
-            return selectedClusters.has(cluster) ? 1 : 0.2;
+        // Initialize selected clusters to include all clusters
+        let selectedClusters = new Set([...new Set(tmp.map(d => d.cluster))]);
+        let selectedCellTypes = new Set([...new Set(tmp.map(d => d.cellType))]);
+
+        // Update scatter plot function
+        function updateScatterPlot(selectedClusters, selectedCellTypes, clear = false) {
+          // Clear existing SVG elements
+          const svg = d3.select("#scatterplot").select("svg");
+          svg.selectAll("*").remove();
+
+          // Filter data based on selected clusters
+          let filteredData = tmp;
+          if (clear) {
+            filteredData = filteredData.filter(d => selectedCellTypes.has('None'))
+          }
+          else {
+            if (selectedClusters.size > 0) {
+              filteredData = filteredData.filter(d => selectedClusters.has(d.cluster));
+            }
+            if (selectedCellTypes.size > 0) {
+              filteredData = filteredData.filter(d => selectedCellTypes.has(d.cellType));
+            }
+          }
+
+
+          const xScale = d3.scaleLinear()
+            .domain(d3.extent(filteredData, d => d.x))
+            .range([20, svg.attr("width") - 20]);
+
+          const yScale = d3.scaleLinear()
+            .domain([0, d3.max(filteredData, d => d.y)])
+            .range([svg.attr("height") - 20, 20]);
+          const brushElement = svg.append("g");
+
+          // Create circles for filtered data points
+          var dots = svg.selectAll("circle").data(filteredData);
+          dots.enter()
+            .append("circle")
+            .attr("class", d => `cluster-${d.cluster}`)
+            .attr("id", "data_point")
+            .attr("r", 2.5)
+            .merge(dots)
+            .attr("cx", d => xScale(d.x))
+            .attr("cy", d => yScale(d.y))
+            .attr("fill", d => colorScale(d.cluster))
+            .on('mouseover', function (d) {
+              if (!brushing) {
+                d3.select(this).attr("opacity", 0.5);
+                toolTip.show(d, this);
+              }
+            })
+            .on('mouseout', function (d) {
+              if (!brushing) {
+                d3.select(this).attr("opacity", 1);
+                toolTip.hide(d, this);
+              }
+            });
+          dots.exit().remove();
+
+          // Update legends
+          const legendDiv = d3.select(".legend");
+          legendDiv.selectAll("*").remove();
+          const clusters = [...new Set(filteredData.map(d => d.cluster))];
+          const legendContainer = legendDiv.append("div").attr("class", "legend-container");
+          clusters.forEach(cluster => {
+            const clusterData = filteredData.find(d => d.cluster === cluster);
+            const legendItem = legendContainer
+              .append("div")
+              .attr("class", "legend-item")
+              .attr("id", cluster);
+            // Add colored square box
+            legendItem.append("div")
+              .style("display", "inline-block")
+              .style("width", "10px")
+              .style("height", "10px")
+              .style("background-color", colorScale(cluster))
+              .style("border", "1px solid #fff")
+              .style("vertical-align", "middle") // Align color box vertically
+              .style("margin-right", "5px");
+            // Add wrapped text in rectangular white shape
+            legendItem.append("div")
+              .style("color", colorScale(cluster))
+              .text(`Cluster ${cluster} - ${clusterData.cellType}`)
+              .style("vertical-align", "middle") // Align text vertically with color box
+              .on("mouseover", function () {
+                svg.selectAll("circle")
+                  //.attr("fill", d => d.cluster === cluster ? colorScale(d.cluster) : "#666")
+                  .attr("opacity", d => d.cluster === cluster ? 1 : 0.1);
+              })
+              .on("mouseout", function () {
+                svg.selectAll("circle")//.attr("fill", d => colorScale(d.cluster))
+                  .attr("opacity", 1);
+              });
           });
-      }
-      function brushEnd() {
-        brushing = false;
-        svg.selectAll("circle").attr("opacity", 1);
-        d3.selectAll(".legend-item").style("opacity", 1);
-      }
+          legendContainer.style("border", "2px solid #fff")
+            .style("padding", "5px")
+            .style("border-radius", "5px");
 
-    }
+          // Brush and linking
+          const scatterplotWidth = +document.getElementById('scatterplot').clientWidth;
+          svg.attr("width", scatterplotWidth).attr("height", 800);
+          const brush = d3.brush()
+            .extent([[0, 0], [+scatterplotWidth, +svg.attr("height")]])
+            .on("start", brushStart)
+            .on("brush", brushed)
+            .on("end", brushEnd);
+          brushElement.call(brush);
+          // Brush 01: Start
+          function brushStart() {
+            brushing = true;
+            svg.selectAll("circle").attr("opacity", 0.1);
+            d3.selectAll(".legend-item").style("opacity", 0.1);
+          }
+          function brushed() {
+            const selection = d3.event.selection;
+            if (!selection) return;
+            const [[x0, y0], [x1, y1]] = selection;
+            const selectedClusters = new Set();
+            // Only the selected point and the corresponding legend-item have their opacity set to 1.
+            svg.selectAll("circle")
+              .attr("opacity", 0.1)  // First set the transparency of all points to 0.1
+              .filter(function (d) {
+                const isSelected = x0 <= xScale(d.x) && xScale(d.x) <= x1 && y0 <= yScale(d.y) && yScale(d.y) <= y1;
+                if (isSelected) {
+                  selectedClusters.add(d.cluster);
+                }
+                return isSelected;
+              }).attr("opacity", 1);
 
-    // Initialize scatter plot and legends
-    const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
-    const scatterplotWidth = document.getElementById('scatterplot').clientWidth;
-    const svg = d3.select("#scatterplot")
-      .append("svg")
-      .attr("width", scatterplotWidth)
-      .attr("height", 800);
-    svg.call(toolTip);
+            // update opacity of legend-items
+            d3.selectAll(".legend-item")
+              .style("opacity", function () {
+                const cluster = parseInt(this.id.split('-').pop());
+                return selectedClusters.has(cluster) ? 1 : 0.2;
+              });
+          }
+          function brushEnd() {
+            brushing = false;
+            svg.selectAll("circle").attr("opacity", 1);
+            d3.selectAll(".legend-item").style("opacity", 1);
+          }
 
-    // Populate cluster filter dropdown
-    const clusterFilterSelect = document.getElementById("clusterFilter");
-    const clusters = [...new Set(tmp.map(d => d.cluster))];
-    clusters.forEach(cluster => {
-      const option = document.createElement("option");
-      option.text = `Cluster ${cluster}`;
-      option.value = cluster;
-      clusterFilterSelect.appendChild(option);
-    });
+        }
 
-    // Populate cell type filter dropdown
-    const cellTypeFilterSelect = document.getElementById("cellTypeFilter");
-    const cellTypes = [...new Set(tmp.map(d => d.cellType))];
-    cellTypes.forEach(cellType => {
-      const option = document.createElement("option");
-      option.text = cellType;
-      option.value = cellType;
-      cellTypeFilterSelect.appendChild(option);
-    });
+        // Initialize scatter plot and legends
+        const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+        const scatterplotWidth = document.getElementById('scatterplot').clientWidth;
+        const svg = d3.select("#scatterplot")
+          .append("svg")
+          .attr("width", scatterplotWidth)
+          .attr("height", 800);
+        svg.call(toolTip);
 
-    // Populate dropdown list
-    const dropdownContainer = document.getElementById("dropdownContainer");
-    const menuIcon = document.getElementById("menuIcon");
-    const boundaryLeft = parseInt(window.getComputedStyle(dropdownContainer).left);
-    const boundaryLeft_icon = parseInt(window.getComputedStyle(menuIcon).left);
+        // Function to handle cluster checkbox click
+        function handleClusterCheckboxClick(cluster) {
+          const checkbox = document.getElementById(`clusterCheckbox-${cluster}`);
+          const legendItem = document.getElementById(`legendItem-${cluster}`);
+          const isSelected = checkbox.checked;
 
-    // Function to toggle dropdown visibility and position
-    function toggleDropdown() {
-      const currentLeft = parseInt(window.getComputedStyle(dropdownContainer).left);
-      const currentLeft_icon = parseInt(window.getComputedStyle(menuIcon).left);
-      const targetLeft = currentLeft === boundaryLeft ? (boundaryLeft + 410) : boundaryLeft; // Toggle between -100 and -500px
-      const targetLeft_icon = currentLeft_icon === boundaryLeft_icon ? (boundaryLeft_icon + 410) : boundaryLeft_icon; // Toggle between -100 and -500px
-      dropdownContainer.style.left = targetLeft + "px";
-      menuIcon.style.left = targetLeft_icon + "px";
+          if (!isSelected) {
+            checkbox.checked = false;
+            legendItem.style.fontWeight = 'normal';
+            legendItem.style.color = 'white';
+            // Remove cluster from selected clusters
+            selectedClusters.delete(parseInt(cluster));
+          } else {
+            checkbox.checked = true;
+            legendItem.style.fontWeight = 'bold';
+            legendItem.style.color = colorScale(cluster);
+            // Add cluster to selected clusters
+            selectedClusters.add(parseInt(cluster));
+          }
+          // Update scatter plot based on selected clusters
+          updateScatterPlot(selectedClusters, selectedCellTypes);
+        }
 
-      if (targetLeft === boundaryLeft) {
-        // Move dropdown to the middle of the page
-        dropdownContainer.style.top = "80px";
-        menuIcon.style.left = "-12%";
-      } else {
-        // Move dropdown back to the left
-        dropdownContainer.style.top = "80px";
-        menuIcon.style.left = "-12%";
-      }
-    }
+        // Function to handle cell type checkbox click
+        function handleCellTypeCheckboxClick(cellType) {
+          const checkbox = document.getElementById(`cellTypeCheckbox-${cellType}`);
+          const listItem = document.getElementById(`cellTypeItem-${cellType}`);
+          const isSelected = checkbox.checked;
 
-    // Event listener for menu icon click
-    menuIcon.addEventListener("click", toggleDropdown);
+          if (!isSelected) {
+            checkbox.checked = false;
+            listItem.style.fontWeight = 'normal';
+            listItem.style.color = 'white';
+            // Remove cell type from selected cell types
+            selectedCellTypes.delete(cellType);
+          } else {
+            checkbox.checked = true;
+            listItem.style.fontWeight = 'bold';
+            listItem.style.color = colorScale(cellType);
+            // Add cell type to selected cell types
+            selectedCellTypes.add(cellType);
+          }
+          // Update scatter plot based on selected cell types
+          updateScatterPlot(selectedClusters, selectedCellTypes);
+        }
 
-    // Event listener for filter dropdowns
-    document.querySelectorAll(".filter").forEach(select => {
-      select.addEventListener("change", updateScatterPlot);
-    });
+        // Function to check all checkboxes
+        function checkAll_cluster() {
+          console.log("Check all button clicked");
+          const checkboxes = document.querySelectorAll('.cluster-checkbox');
+          checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+            const cluster = checkbox.value;
+            const legendItem = document.getElementById(`legendItem-${cluster}`);
+            legendItem.style.fontWeight = 'bold';
+            selectedClusters.add(parseInt(cluster));
+          });
+          // Update scatter plot based on all clusters being checked
+          updateScatterPlot(selectedClusters, selectedCellTypes);
+        }
 
-    // Initial scatter plot with default filters
-    updateScatterPlot();
-  }).catch(function (error) {
-    console.log(error);
-  });
+        // Function to uncheck all checkboxes
+        function uncheckAll_cluster() {
+          console.log("Uncheck all button clicked");
+          const checkboxes = document.querySelectorAll('.cluster-checkbox');
+          checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+            const cluster = checkbox.value;
+            const legendItem = document.getElementById(`legendItem-${cluster}`);
+            legendItem.style.fontWeight = 'normal';
+            selectedClusters.delete(parseInt(cluster));
+          });
+          // Update scatter plot with no clusters being selected
+          updateScatterPlot(selectedClusters, selectedCellTypes, clear = true);
+        }
+
+        // Function to check all checkboxes
+        function checkAll_cell() {
+          console.log("Check all button clicked");
+          const checkboxes = document.querySelectorAll('.cellType-checkbox');
+          checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+            const cellType = checkbox.value;
+            const listItem = document.getElementById(`cellTypeItem-${cellType}`);
+            listItem.style.fontWeight = 'bold';
+            selectedCellTypes.add(parseInt(cellType));
+          });
+          // Update scatter plot based on all clusters being checked
+          updateScatterPlot(selectedClusters, selectedCellTypes);
+        }
+
+        // Function to uncheck all checkboxes
+        function uncheckAll_cell() {
+          console.log("Uncheck all button clicked");
+          const checkboxes = document.querySelectorAll('.cellType-checkbox');
+          checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+            const cellType = checkbox.value;
+            const listItem = document.getElementById(`cellTypeItem-${cellType}`);
+            listItem.style.fontWeight = 'normal';
+            selectedCellTypes.delete(parseInt(cellType));
+          });
+          // Update scatter plot with no clusters being selected
+          updateScatterPlot(selectedClusters, selectedCellTypes, clear = true);
+        }
+
+        // Function to toggle list visibility
+        function toggleList(list) {
+          const isFolded = list.classList.contains('folded');
+          if (isFolded) {
+            list.classList.remove('folded');
+          } else {
+            list.classList.add('folded');
+          }
+        }
+
+        // Populate dropdown list
+        const dropdownContainer = document.getElementById("dropdownContainer");
+        const menuIcon = document.getElementById("menuIcon");
+        const boundaryLeft = parseInt(window.getComputedStyle(dropdownContainer).left);
+        const boundaryLeft_icon = parseInt(window.getComputedStyle(menuIcon).left);
+
+        // Function to toggle dropdown visibility and position
+        function toggleDropdown() {
+          const currentLeft = parseInt(window.getComputedStyle(dropdownContainer).left);
+          const currentLeft_icon = parseInt(window.getComputedStyle(menuIcon).left);
+          const targetLeft = currentLeft === boundaryLeft ? (boundaryLeft + 460) : boundaryLeft; // Toggle between -100 and -500px
+          const targetLeft_icon = currentLeft_icon === boundaryLeft_icon ? (boundaryLeft_icon + 460) : boundaryLeft_icon; // Toggle between -100 and -500px
+          dropdownContainer.style.left = targetLeft + "px";
+          menuIcon.style.left = targetLeft_icon + "px";
+
+          if (targetLeft === boundaryLeft) {
+            // Move dropdown to the middle of the page
+            dropdownContainer.style.top = "100px";
+            menuIcon.style.left = "-12%";
+          } else {
+            // Move dropdown back to the left
+            dropdownContainer.style.top = "100px";
+            menuIcon.style.left = "-12%";
+          }
+        }
+
+        // Event listener for menu icon click
+        menuIcon.addEventListener("click", toggleDropdown);
+
+        // Function to populate cluster list
+        function populateClusterList(clusters) {
+          // Sort clusters array based on cluster values from low to high
+          clusters.sort((a, b) => a - b);
+          const clusterList = document.getElementById('clusterList');
+          const totalPoints = tmp.length; // Total number of data points
+          clusters.forEach(cluster => {
+            const legendContainer = document.createElement('div'); // Container for legend item and bar
+            const legendItem = document.createElement('div');
+            legendItem.className = 'legend-item';
+            legendItem.id = `legendItem-${cluster}`;
+            legendItem.style.color = colorScale(cluster);
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `clusterCheckbox-${cluster}`;
+            checkbox.className = 'cluster-checkbox';
+            checkbox.value = cluster;
+            checkbox.checked = true; // Initially checked
+            checkbox.onclick = () => handleClusterCheckboxClick(cluster);
+
+            const labelText = document.createElement('span');
+            labelText.textContent = `Cluster ${cluster}`;
+            labelText.style.color = 'colorScale(cluster)';
+
+            // Calculate the percentage of points in this cluster
+            const clusterPoints = tmp.filter(d => d.cluster === cluster).length;
+            const percentage = (clusterPoints / totalPoints) * 100;
+
+            // Create a stacked bar chart for the percentage
+            const barWidth = Math.round(percentage)*0.8;
+            const barHeight = 8;
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            bar.style.width = `${barWidth}px`;
+            bar.style.height = `${barHeight}px`;
+            bar.style.backgroundColor = colorScale(cluster); // Use cluster color
+            bar.style.opacity = 0.8; // Adjust opacity as needed
+
+            // Create the remaining part of the bar chart
+            const remainingBarWidth = Math.round(100 - percentage)*0.8;
+            const remainingBar = document.createElement('div');
+            remainingBar.className = 'remaining-bar';
+            remainingBar.style.width = `${remainingBarWidth}px`;
+            remainingBar.style.height = `${barHeight}px`;
+            remainingBar.style.backgroundColor = '#000'; // Black color for remaining part
+            remainingBar.style.opacity = 0.8; // Adjust opacity as needed
+
+            legendItem.appendChild(checkbox);
+            legendItem.appendChild(labelText);
+            // Wrap the legend item and bar in a container and set display to flex
+            const container = document.createElement('div');
+            container.className = 'legend-container-x';
+            container.style.display = 'flex';
+            container.appendChild(legendItem); // Append legend item to container
+            container.appendChild(bar); // Append the stacked bar chart to container
+            container.appendChild(remainingBar); // Append the remaining part bar chart to container
+            clusterList.appendChild(container); // Append container to cluster list
+          });
+        }
+
+        // Function to populate cell type list
+        function populateCellTypeList(cellTypes) {
+          // Sort cellTypes array in alphabetical ascending order
+          cellTypes.sort((a, b) => a.localeCompare(b));
+          const cellTypeList = document.getElementById('cellTypeList');
+          cellTypes.forEach(cellType => {
+            const listItem = document.createElement('div');
+            listItem.className = 'list-item';
+            listItem.id = `cellTypeItem-${cellType}`;
+            listItem.style.color = colorScale(cellType);
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `cellTypeCheckbox-${cellType}`;
+            checkbox.className = 'cellType-checkbox';
+            checkbox.value = cellType;
+            checkbox.checked = true; // Initially checked
+            checkbox.onclick = () => handleCellTypeCheckboxClick(cellType);
+
+            const labelText = document.createElement('span');
+            labelText.textContent = cellType;
+            labelText.style.color = 'colorScale(cellType)';
+
+            listItem.appendChild(checkbox);
+            listItem.appendChild(labelText);
+            cellTypeList.appendChild(listItem);
+          });
+        }
+
+        // Event listener for filter dropdowns
+        document.querySelectorAll(".filter").forEach(select => {
+          select.addEventListener("change", updateScatterPlot);
+        });
+
+        // Populate cluster list on load
+        populateClusterList([...new Set(tmp.map(d => d.cluster))]);
+
+        // Populate cell type list on load
+        populateCellTypeList([...new Set(tmp.map(d => d.cellType))]);
+
+        // Add event listener to toggle list visibility
+        document.querySelectorAll('.listHeader').forEach(header => {
+          header.addEventListener('click', () => {
+            const list = header.nextElementSibling; // Get the next element, which is the list itself
+            toggleList(list);
+          });
+        });
+
+        // Add event listener for uncheck all button
+        window.addEventListener('load', function () {
+          const checkAllButton_cluster = document.getElementById('check-button-cluster');
+          const uncheckAllButton_cluster = document.getElementById('uncheck-button-cluster');
+          const checkAllButton_cell = document.getElementById('check-button-cell');
+          const uncheckAllButton_cell = document.getElementById('uncheck-button-cell');
+          // Add event listeners to the buttons
+          checkAllButton_cluster.addEventListener('click', checkAll_cluster);
+          uncheckAllButton_cluster.addEventListener('click', uncheckAll_cluster);
+          checkAllButton_cell.addEventListener('click', checkAll_cell);
+          uncheckAllButton_cell.addEventListener('click', uncheckAll_cell);
+        });
+
+        // Function to remove loader
+        function removeLoader() {
+          const loaders = document.getElementsByClassName("loader");
+          // Convert HTMLCollection to array and remove each loader
+          Array.from(loaders).forEach(loader => {
+            loader.remove();
+          });
+        }
+
+        // Remove loader when scatterplot is initialized
+        removeLoader();
+
+        // Initial scatter plot with default filters
+        updateScatterPlot(selectedClusters, selectedCellTypes);
+      }).catch(function (error) {
+        console.log(error);
+      });
 
 
-</script>
+  </script>
 
 </body>
 
