@@ -302,6 +302,12 @@
 
   <div id="container">
     <h1>Mouse Brain Cell Data Visualization</h1>
+    <div id="radioButtonContainer">
+      <input type="radio" id="reducedDataRadio" name="dataRadio" value="reduced" checked>
+      <label for="reducedDataRadio">Path to Reduced CSV Data</label><br>
+      <input type="radio" id="fullDataRadio" name="dataRadio" value="full">
+      <label for="fullDataRadio">Path to Full CSV Data</label>
+    </div>
     <div id="dropdownContainer">
       <div class="dropdownContent">
         <div class="listHeader" id="clusterToggle" style="border: 1px solid white;">>>> Clusters <<<</div>
@@ -355,7 +361,7 @@
 
     // Get the data
     var pathToCsv = "MERFISH_all_neurons_with_clusters_cut.csv";		// path to csv
-    // var pathToCsv = "MERFISH_all_neurons_with_clusters.csv";		// path to full csv
+    var pathToCsv2 = "MERFISH_all_neurons_with_clusters.csv";		// path to full csv
     var neighborhood = 'analysis_results/cell_neighborhood.csv';
     var brushing = false;
     var toolTip = d3.tip()
@@ -382,15 +388,28 @@
           cellType: d.cell_type,
         }
       }),
+      d3.dsv(",", pathToCsv2, function (d) {
+        return {
+          // format data attributes if required
+          names: d.names,
+          x: +d.center_x,
+          y: +d.center_y,
+          cluster: +d.cluster_no,
+          cellType: d.cell_type,
+        }
+      }),
       d3.dsv(',', neighborhood, function (d) {
         return d;
       })
-    ])
-      .then(function (data) {
-        tmp = data[0]
-        shuffle(tmp)
+    ]).then(function (data) {
+        reducedData = data[0];
+        fullData = data[1];
+        shuffle(reducedData);
+        shuffle(fullData);
         //Elements sliced
-        tmp = tmp.slice(0, 50000)
+        reducedData = reducedData.slice(0, 50000);
+        fullData = fullData.slice(0, 50000);
+        tmp = reducedData // by default
         // console.log(data[0]);
         // console.log(data[1]); // you should see the data in your browser's developer tools console
 
@@ -842,6 +861,29 @@
           uncheckAllButton_cluster.addEventListener('click', uncheckAll_cluster);
           checkAllButton_cell.addEventListener('click', checkAll_cell);
           uncheckAllButton_cell.addEventListener('click', uncheckAll_cell);
+        });
+
+        // Add event listener to radio buttons
+        document.getElementById('reducedDataRadio').addEventListener('change', function() {
+          if (this.checked) {
+            // Initialize selected clusters to include all clusters
+            tmp = reducedData;
+            let selectedClusters = new Set([...new Set(tmp.map(d => d.cluster))]);
+            let selectedCellTypes = new Set([...new Set(tmp.map(d => d.cellType))]);
+            // Code to update the visualization based on the reduced dataset
+            updateScatterPlot(selectedClusters, selectedCellTypes);
+          }
+        });
+
+        document.getElementById('fullDataRadio').addEventListener('change', function() {
+          if (this.checked) {
+            // Initialize selected clusters to include all clusters
+            tmp = fullData;
+            let selectedClusters = new Set([...new Set(tmp.map(d => d.cluster))]);
+            let selectedCellTypes = new Set([...new Set(tmp.map(d => d.cellType))]);
+            // Code to update the visualization based on the full dataset
+            updateScatterPlot(selectedClusters, selectedCellTypes);
+          }
         });
 
         // Function to remove loader
