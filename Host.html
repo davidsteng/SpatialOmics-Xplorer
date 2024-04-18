@@ -121,7 +121,7 @@
       left: -550px;
       /* Initially hidden */
       width: 200px;
-      height: 950px;
+      height: 980px;
       background-color: #222;
       /* Dark gray background */
       transition: left 0.5s ease;
@@ -153,10 +153,13 @@
     .foldableList {
       display: block;
       margin-bottom: 10px;
+      max-height: 1000px;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out; /* Add transition for max-height */
     }
 
     .folded {
-      display: none;
+      max-height: 0; /* Set the max-height to 0 when folded */
     }
 
     .listHeader {
@@ -165,6 +168,12 @@
 
     .cluster-checkbox {
       margin-right: 5px;
+      background-color: transparent;
+    }
+
+    .cellType-checkbox {
+      margin-right: 5px;
+      background-color: transparent;
     }
 
     #scatterplot {
@@ -753,6 +762,17 @@
           // Sort cellTypes array in alphabetical ascending order
           cellTypes.sort((a, b) => a.localeCompare(b));
           const cellTypeList = document.getElementById('cellTypeList');
+
+          // Create search input element
+          const searchInput = document.createElement('input');
+          searchInput.type = 'text';
+          searchInput.id = 'cellTypeSearch';
+          searchInput.placeholder = 'Search cell types';
+          searchInput.addEventListener('input', handleCellTypeSearch);
+
+          // Append search input to the cellTypeList
+          cellTypeList.appendChild(searchInput);
+
           cellTypes.forEach(cellType => {
             const listItem = document.createElement('div');
             listItem.className = 'list-item';
@@ -774,6 +794,21 @@
             listItem.appendChild(checkbox);
             listItem.appendChild(labelText);
             cellTypeList.appendChild(listItem);
+          });
+        }
+
+        // Function to handle cell type search
+        function handleCellTypeSearch() {
+          const searchTerm = this.value.toLowerCase();
+          const cellTypeCheckboxes = document.querySelectorAll('.cellType-checkbox');
+          cellTypeCheckboxes.forEach(checkbox => {
+            const labelText = checkbox.nextElementSibling.textContent.toLowerCase();
+            const listItem = checkbox.parentElement;
+            if (labelText.includes(searchTerm)) {
+              listItem.style.display = 'block';
+            } else {
+              listItem.style.display = 'none';
+            }
           });
         }
 
