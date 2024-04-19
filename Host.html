@@ -121,7 +121,6 @@
       left: -550px;
       /* Initially hidden */
       width: 200px;
-      height: 980px;
       background-color: #222;
       /* Dark gray background */
       transition: left 0.5s ease;
@@ -290,6 +289,22 @@
       align-items: center; /* Center the bars vertically */
     }
 
+    #cellTypeSearch {
+      /* Add your styling properties here */
+      /* For example: */
+      width: 60%;
+      padding: 2px;
+      box-sizing: border-box;
+      border: 2px solid #8a8a8a;
+      border-radius: 2px;
+      margin-bottom: 2px;
+    }
+
+    #cellTypeSearch::placeholder {
+      /* Add styling for placeholder text */
+      color: #999;
+    }
+
   </style>
 </head>
 
@@ -324,6 +339,7 @@
             <div id="check-button-cell" class="check-button">Check All</div>
             <div id="uncheck-button-cell" class="uncheck-button">Uncheck All</div>
           </div>
+          <input id="cellTypeSearch" type="text"></input>
           <!-- Cell type list items will be populated dynamically -->
         </div>
       </div>
@@ -408,7 +424,7 @@
         shuffle(fullData);
         //Elements sliced
         reducedData = reducedData.slice(0, 50000);
-        fullData = fullData.slice(0, 50000);
+        fullData = fullData.slice(0, 100000);
         tmp = reducedData // by default
         // console.log(data[0]);
         // console.log(data[1]); // you should see the data in your browser's developer tools console
@@ -477,6 +493,8 @@
           legendDiv.selectAll("*").remove();
           const clusters = [...new Set(filteredData.map(d => d.cluster))];
           const legendContainer = legendDiv.append("div").attr("class", "legend-container");
+          // Sort clusters array based on cluster values from low to high
+          clusters.sort((a, b) => a - b);
           clusters.forEach(cluster => {
             const clusterData = filteredData.find(d => d.cluster === cluster);
             const legendItem = legendContainer
@@ -677,13 +695,36 @@
         }
 
         // Function to toggle list visibility
+        let unfoldedListHeights = {}; // Object to store initial heights of unfolded lists
+        let foldedListHeights = {}; // Object to store heights of folded lists
+
         function toggleList(list) {
           const isFolded = list.classList.contains('folded');
+          const listId = list.id;
           if (isFolded) {
             list.classList.remove('folded');
+            delete unfoldedListHeights[listId]; // Remove height if list is folded
+            foldedListHeights[listId] = listHeight; // Store height of folded list
           } else {
             list.classList.add('folded');
+            delete foldedListHeights[listId]; // Remove height if list is folded
+            unfoldedListHeights[listId] = listHeight; // Store height of folded list
           }
+          adjustDropdownHeight(); // Adjust dropdown height after toggling list
+        }
+
+        function adjustDropdownHeight() {
+            const listHeaderHeight = document.querySelector('.listHeader').offsetHeight;
+            const checkButtonsHeight = document.getElementById('buttonContainer').offsetHeight;
+            const searchInputHeight = document.getElementById('cellTypeSearch').offsetHeight;
+            let totalHeight = listHeaderHeight + checkButtonsHeight + searchInputHeight;
+
+            // Add heights of unfolded lists
+            for (const [listId, height] of Object.entries(unfoldedListHeights)) {
+                totalHeight += height;
+            }
+
+            document.getElementById('dropdownContainer').style.height = `${totalHeight}px`; // Set height to accommodate tallest unfolded list
         }
 
         // Populate dropdown list
@@ -717,12 +758,18 @@
 
         // Function to populate cluster list
         function populateClusterList(clusters) {
+          // Clear existing cluster list
+          const clusterList = document.getElementById('clusterList');
+          // Remove all child elements except the button container
+          const clusterContainers = document.querySelectorAll('#clusterList #cluster-container');
+          // Remove all cluster containers
+          clusterContainers.forEach(container => {
+            container.remove();
+          });
           // Sort clusters array based on cluster values from low to high
           clusters.sort((a, b) => a - b);
-          const clusterList = document.getElementById('clusterList');
           const totalPoints = tmp.length; // Total number of data points
           clusters.forEach(cluster => {
-            const legendContainer = document.createElement('div'); // Container for legend item and bar
             const legendItem = document.createElement('div');
             legendItem.className = 'legend-item';
             legendItem.id = `legendItem-${cluster}`;
@@ -767,6 +814,7 @@
             legendItem.appendChild(labelText);
             // Wrap the legend item and bar in a container and set display to flex
             const container = document.createElement('div');
+            container.id = 'cluster-container';
             container.className = 'legend-container-x';
             container.style.display = 'flex';
             container.appendChild(legendItem); // Append legend item to container
@@ -778,10 +826,19 @@
 
         // Function to populate cell type list
         function populateCellTypeList(cellTypes) {
+          // Clear existing cellType list
+          const cellTypeList = document.getElementById('cellTypeList');
+          // Remove all child elements including the button container
+          const cellTypeItems = document.querySelectorAll('#cellTypeList .list-item');
+          // Remove all cellType containers
+          cellTypeItems.forEach(item => {
+            item.remove();
+          });
+          // Clear the search input
+          const cellTypeSearch = document.getElementById('cellTypeSearch');
+          cellTypeSearch.remove();
           // Sort cellTypes array in alphabetical ascending order
           cellTypes.sort((a, b) => a.localeCompare(b));
-          const cellTypeList = document.getElementById('cellTypeList');
-
           // Create search input element
           const searchInput = document.createElement('input');
           searchInput.type = 'text';
@@ -875,33 +932,49 @@
 
         // Add event listener to radio buttons
         document.getElementById('reducedDataRadio').addEventListener('change', function() {
+          addLoader();
           if (this.checked) {
             // Initialize selected clusters to include all clusters
             tmp = reducedData;
             let selectedClusters = new Set([...new Set(tmp.map(d => d.cluster))]);
             let selectedCellTypes = new Set([...new Set(tmp.map(d => d.cellType))]);
             // Code to update the visualization based on the reduced dataset
+            populateClusterList([...new Set(tmp.map(d => d.cluster))]);
+            populateCellTypeList([...new Set(tmp.map(d => d.cellType))]);
             updateScatterPlot(selectedClusters, selectedCellTypes);
+            removeLoader();
           }
         });
 
         document.getElementById('fullDataRadio').addEventListener('change', function() {
+          addLoader();
           if (this.checked) {
             // Initialize selected clusters to include all clusters
             tmp = fullData;
             let selectedClusters = new Set([...new Set(tmp.map(d => d.cluster))]);
             let selectedCellTypes = new Set([...new Set(tmp.map(d => d.cellType))]);
             // Code to update the visualization based on the full dataset
+            populateClusterList([...new Set(tmp.map(d => d.cluster))]);
+            populateCellTypeList([...new Set(tmp.map(d => d.cellType))]);
             updateScatterPlot(selectedClusters, selectedCellTypes);
+            removeLoader();
           }
         });
+
+        // Function to add the loader back
+        function addLoader() {
+          const loaders = document.getElementsByClassName("loader");
+          Array.from(loaders).forEach(loader => {
+            loader.style.display = 'block';
+          });
+        }
 
         // Function to remove loader
         function removeLoader() {
           const loaders = document.getElementsByClassName("loader");
           // Convert HTMLCollection to array and remove each loader
           Array.from(loaders).forEach(loader => {
-            loader.remove();
+            loader.style.display = 'none';;
           });
         }
 
