@@ -420,10 +420,10 @@
     ]).then(function (data) {
         reducedData = data[0];
         fullData = data[1];
-        shuffle(reducedData);
+        //shuffle(reducedData); #Shuffled Dataset does not reach 50k points.
         shuffle(fullData);
         //Elements sliced
-        reducedData = reducedData.slice(0, 50000);
+        //reducedData = reducedData.slice(0, 50000);
         fullData = fullData.slice(0, 100000);
         tmp = reducedData // by default
         // console.log(data[0]);
@@ -452,7 +452,6 @@
               filteredData = filteredData.filter(d => selectedCellTypes.has(d.cellType));
             }
           }
-
 
           const xScale = d3.scaleLinear()
             .domain(d3.extent(filteredData, d => d.x))
@@ -518,7 +517,7 @@
               .on("mouseover", function () {
                 svg.selectAll("circle")
                   //.attr("fill", d => d.cluster === cluster ? colorScale(d.cluster) : "#666")
-                  .attr("opacity", d => d.cluster === cluster ? 1 : 0.1);
+                  .attr("opacity", d => d.cluster === cluster ? 1 : 0.05);
               })
               .on("mouseout", function () {
                 svg.selectAll("circle")//.attr("fill", d => colorScale(d.cluster))
@@ -672,7 +671,7 @@
             const listItem = document.getElementById(`cellTypeItem-${cellType}`);
             listItem.style.fontWeight = 'bold';
             listItem.style.color = colorScale(cellType);
-            selectedCellTypes.add(parseInt(cellType));
+            selectedCellTypes.add(cellType);
           });
           // Update scatter plot based on all clusters being checked
           updateScatterPlot(selectedClusters, selectedCellTypes);
@@ -688,7 +687,7 @@
             const listItem = document.getElementById(`cellTypeItem-${cellType}`);
             listItem.style.fontWeight = 'normal';
             listItem.style.color = 'white';
-            selectedCellTypes.delete(parseInt(cellType));
+            selectedCellTypes.delete(cellType);
           });
           // Update scatter plot with no clusters being selected
           updateScatterPlot(selectedClusters, selectedCellTypes, clear = true);
